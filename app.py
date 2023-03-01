@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-from easysnmp import Session
+#from easysnmp import Session
 import random
 from time import time
 
@@ -20,6 +20,8 @@ class App:
 
     def get_layout(self):
         return [
+            [sg.Text('Endereço de IP do agente: ', font=('Helvetica', 15), text_color='black'),
+            sg.InputText(key='-AGENT-')],[sg.Button('Conectar', font=('Helvetica', 12)), sg.Exit(font=('Helvetica', 12))],
             [sg.Text('Tempo de atividade = ', font=('Helvetica', 15), text_color='black'),
              sg.Text(size=(40,1), key='-UPTIME-')],
             [sg.Text('Utilização do processador = ', font=('Helvetica', 15), text_color='black'),
@@ -34,20 +36,22 @@ class App:
              sg.Text(size=(40,1), key='-BANDWIDTH-')],
             [sg.Text('Taxa de transferência de rede = ', font=('Helvetica', 15), text_color='black'),
              sg.Text(size=(40,1), key='-TRAFFIC-')],
-            [sg.Button('Atualizar', font=('Helvetica', 12)), sg.Exit(font=('Helvetica', 12))]]
+            ]
 
     def run(self):
         while True:
             event, values = self.window.read()
             if event in (sg.WIN_CLOSED, 'Exit'):
                 break
-            if event == 'Atualizar':
-                self.update()
-            self.update()
+            if event == 'Conectar':
+                endereco_ip = values['-AGENT-']
+                print(f'Endereço IP digitado: {endereco_ip}')
+                while event not in (sg.WIN_CLOSED, 'Exit'):
+                    self.update(endereco_ip)
 
-    def update(self):
-       
-        session = Session(hostname='10.0.0.1', community='public', version=2)
+    def update(self,endereco_ip):
+        
+        session = Session(hostname=endereco_ip, community='public', version=2)
 
         uptime = session.get('sysUpTime.0')
         uptime_ticks = uptime.value
