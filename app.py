@@ -10,9 +10,9 @@ class App:
 
     def __init__(self):
         self.window = self.create_screen()
-
+ 
     def create_screen(self):
-        window = sg.Window('Análise de Métricas', self.get_layout(), default_element_size=(40, 1), auto_size_text=False,
+        window = sg.Window('Análise de Métricas', self.get_layout(), default_element_size=(40, 1), auto_size_text=True,
                          button_color='purple', margins=(10, 10))
         #window = sg.Window("My Window", self.get_layout(), background_image="background.jfif")
 
