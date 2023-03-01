@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-#from easysnmp import Session
+from easysnmp import Session
 import random
 from time import time
 
@@ -43,39 +43,47 @@ class App:
                 break
             if event == 'Atualizar':
                 self.update()
+            self.update()
 
     def update(self):
        
-        #session = Session(hostname='10.0.0.1', community='public', version=2)
+        session = Session(hostname='10.0.0.1', community='public', version=2)
 
-        #uptime = session.get('sysUpTime.0')
-        uptime = random.random()
-        self.window['-UPTIME-'].update(uptime)
-        #hrProcessorLoad = session.get('HOST-RESOURCES-MIB::hrProcessorLoad.1').value
-        hrProcessorLoad = random.random()
+        uptime = session.get('sysUpTime.0')
+        uptime_ticks = uptime.value
+        uptime_secs = int(uptime_ticks) // 100
+        #uptime = random.random()
+        self.window['-UPTIME-'].update(uptime_secs)
+        
+        hrProcessorLoad = session.get('HOST-RESOURCES-MIB::hrProcessorLoad.1').value
+        #hrProcessorLoad = random.random()
         self.window['-PROCESSOR-'].update(hrProcessorLoad)
-        #memTotalReal = session.get('UCD-SNMP-MIB::memTotalReal.0').value
-        #memAvailReal = session.get('UCD-SNMP-MIB::memAvailReal.0').value
-        #memory = (int(memTotalReal) - int(memAvailReal)) / int(memTotalReal) * 100
-        memory = random.random()
-        self.window['-MEMORY-'].update(memory)
-        #ifInErrors = session.get('IF-MIB::ifInErrors.2').value
+        
+        memTotalReal = session.get('UCD-SNMP-MIB::memTotalReal.0').value
+        memAvailReal = session.get('UCD-SNMP-MIB::memAvailReal.0').value
+        memory = (int(memTotalReal) - int(memAvailReal)) / int(memTotalReal) * 100
+        #memory = random.random()
+        
+        #self.window['-MEMORY-'].update(memory)
+        ifInErrors = session.get('IF-MIB::ifInErrors.2').value
         ifInErrors = random.random()
         self.window['-INERRORS-'].update(ifInErrors)
         #ifOutErrors = session.get('IF-MIB::ifOutErrors.2').value
         ifOutErrors = random.random()
         self.window['-OUTERRORS-'].update(ifOutErrors)
         
-        #utilizacao_bps,trafego = self.utilizacao_largura_banda_e_trafego(self,session,intervalo = 2)
-        utilizacao_bps = random.random() 
+        utilizacao_bps= self.utilizacao_largura_banda_e(session,intervalo = 2)
+        #utilizacao_bps = random.random() 
         self.window['-BANDWIDTH-'].update(utilizacao_bps)
         
-        #trafego = self.taxa_de_transferencia_de_rede(self,session,intervalo = 2)
-        trafego = random.random() 
+        trafego = self.transfer_rate(session,intervalo = 2)
+        #trafego = random.random() 
         self.window['-TRAFFIC-'].update(trafego)
         
-        
-        self.verifica_erros(variavel = 'memoria',valor = memory ,limite = 75)
+        self.verifica_erros(variavel = 'INERRORS',valor = ifInErrors ,limite = 1)
+        self.verifica_erros(variavel = 'OUTERRORS',valor = ifOutErrors ,limite = 1)
+        self.verifica_erros(variavel = 'Utilização da bandwidth',valor = utilizacao_bps ,limite = 95)
+        self.verifica_erros(variavel = 'memoria',valor = memory ,limite = 95)
         
         
 
