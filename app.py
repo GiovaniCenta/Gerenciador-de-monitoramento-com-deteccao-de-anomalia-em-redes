@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-#from easysnmp import Session
+from easysnmp import Session
 import random
 from time import time
 
@@ -74,18 +74,18 @@ class App:
              sg.Text(size=(40,1), key='-TCP-')],
             
             #Informacoes de trafego entrada,saida e total
-            [sg.Text('Tráfego de entrada = ', font=('Helvetica', 15), text_color='white'),
+            [sg.Text('Tráfego de entrada (bytes) = ', font=('Helvetica', 15), text_color='white'),
              sg.Text(size=(40,1), key='-INTRAFFIC-')],
-            [sg.Text('Tráfego de saída = ', font=('Helvetica', 15), text_color='white'),
+            [sg.Text('Tráfego de saída (bytes) = ', font=('Helvetica', 15), text_color='white'),
              sg.Text(size=(40,1), key='-OUTTRAFFIC-')],
-            [sg.Text('Tráfego total = ', font=('Helvetica', 15), text_color='white'),
+            [sg.Text('Tráfego total (bytes) = ', font=('Helvetica', 15), text_color='white'),
              sg.Text(size=(40,1), key='-TOTALTRAFFIC-')],
             
             
             
-            [sg.Text('Utilização da largura de banda = ', font=('Helvetica', 15), text_color='white'),
+            [sg.Text('Utilização da largura de banda (Mb/s) = ', font=('Helvetica', 15), text_color='white'),
              sg.Text(size=(40,1), key='-BANDWIDTH-')],
-            [sg.Text('Taxa de transferência de rede = ', font=('Helvetica', 15), text_color='white'),
+            [sg.Text('Taxa de transferência de rede (bytes/s) = ', font=('Helvetica', 15), text_color='white'),
              sg.Text(size=(40,1), key='-TRAFFIC-')],
             ]
 
@@ -96,7 +96,10 @@ class App:
             event, values = self.window.read(timeout=0)
             endereco_ip = ip
             print(f'Endereço IP digitado: {endereco_ip}')
+            
             self.update(endereco_ip)
+            import time
+            time.sleep(1)
             if event in (sg.WIN_CLOSED, 'Exit'):
                 break
             
@@ -109,40 +112,41 @@ class App:
 
     def update(self,endereco_ip):
         
-        """        session = Session(hostname=endereco_ip, community='public', version=2)
+        session = Session(hostname=endereco_ip, community='public', version=2)
 
-                uptime = session.get('sysUpTime.0')
-                uptime_ticks = uptime.value
-                uptime_secs = int(uptime_ticks) // 100"""
+        uptime = session.get('sysUpTime.0')
+        uptime_ticks = uptime.value
+        uptime_secs = int(uptime_ticks) // 100
         
-        uptime_secs = random.random()
+        #uptime_secs = random.random()
         self.window['-UPTIME-'].update(uptime_secs)
         
         #cpu_usage = int(session.get('ssCpuRawIdle.0').value)
-        #cpu_usage_percent = 100 - cpu_usage
-        cpu_usage_percent = random.random()
+        cpu_usage = int(session.get('1.3.6.1.4.1.2021.11.11.0').value)
+        cpu_usage_percent = 100 - cpu_usage
+        #cpu_usage_percent = random.random()
         self.window['-PROCESSOR-'].update(cpu_usage_percent)
         
         #numero de interfaces
         oid = '1.3.6.1.2.1.2.1.0'
-        #value = int(session.get(oid).value)
-        value = random.random()
+        value = int(session.get(oid).value)
+        #value = random.random()
         self.window['-INTERFACES-'].update(value)
         
         
         #total_memory,used_memory,used_memory_percent,free_memory = self.memory(session)
         
         #####MEMORIA
-        #total_memory,used_memory,used_memory_percent,free_memory = self.memory(session)
-        total_memory,used_memory,used_memory_percent,free_memory = [random.random(),random.random(),random.random(),random.random()]
+        total_memory,used_memory,used_memory_percent,free_memory = self.memory(session)
+        #total_memory,used_memory,used_memory_percent,free_memory = [random.random(),random.random(),random.random(),random.random()]
         self.window['-MEMORYTOTAL-'].update(total_memory)
         self.window['-MEMORYUSE-'].update(used_memory)
         self.window['-MEMORYFREE-'].update(free_memory)
         self.window['-MEMORYFREEPERCENT-'].update(used_memory_percent)
         
         
-        #disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free = self.disk_space(session)
-        disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free = [random.random(),random.random(),random.random(),random.random()]
+        disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free = self.disk_space(session)
+        #disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free = [random.random(),random.random(),random.random(),random.random()]
 
         self.window['-DISKTOTAL-'].update(disk_space_total)
         self.window['-DISKUSE-'].update(disk_space_used)
@@ -150,33 +154,33 @@ class App:
         self.window['-DISKFREEPERCENT-'].update(disk_space_used_percent)
         
         ####Erros de entrada e saida
-        #ifInErrors = session.get('IF-MIB::ifInErrors.2').value
-        ifInErrors = random.random()
+        ifInErrors = session.get('IF-MIB::ifInErrors.2').value
+        #ifInErrors = random.random()
         self.window['-INERRORS-'].update(ifInErrors)
-        #ifOutErrors = session.get('IF-MIB::ifOutErrors.2').value
-        ifOutErrors = random.random()
+        ifOutErrors = session.get('IF-MIB::ifOutErrors.2').value
+        #ifOutErrors = random.random()
         self.window['-OUTERRORS-'].update(ifOutErrors)
         
         ####Temperatura
-        #temperature = self.temperature(session)
-        temperature = random.random()
+        temperature = self.temperature(session)
+        #temperature = random.random()
         self.window['-TEMPERATURE-'].update(temperature)
         
         # Pacotes enviados e recebidos
-        # packets_sent,packets_received = self.packets(session)
-        packets_sent,packets_received = [random.random(),random.random()]
+        packets_sent,packets_received = self.packets(session)
+        #packets_sent,packets_received = [random.random(),random.random()]
         self.window['-PACKETSSENT-'].update(packets_sent)
         self.window['-PACKETSRECEIVED-'].update(packets_received)
         
         # Contador de conexões TCP
         active_tcp_oid = 'tcpCurrEstab.0'
-        #active_tcp_connections = int(session.get(active_tcp_oid).value)
-        active_tcp_connections = random.random()
+        active_tcp_connections = int(session.get(active_tcp_oid).value)
+        #active_tcp_connections = random.random()
         self.window['-TCP-'].update(active_tcp_connections)
         
         # Informações de trafego
-        #input_traffic, output_traffic,total_traffic = self.trafego(session)
-        input_traffic, output_traffic,total_traffic = [random.random(),random.random(),random.random()]
+        input_traffic, output_traffic,total_traffic = self.trafego(session)
+        #input_traffic, output_traffic,total_traffic = [random.random(),random.random(),random.random()]
         self.window['-INTRAFFIC-'].update(input_traffic)
         self.window['-OUTTRAFFIC-'].update(output_traffic)
         self.window['-TOTALTRAFFIC-'].update(total_traffic)
@@ -184,12 +188,12 @@ class App:
         
         
         
-        #utilizacao_bps= self.utilizacao_largura_banda_e(session,intervalo = 2)
-        utilizacao_bps = random.random() 
+        utilizacao_bps= self.utilizacao_largura_banda(session,intervalo = 2)
+        #utilizacao_bps = random.random() 
         self.window['-BANDWIDTH-'].update(utilizacao_bps)
         
-        #trafego = self.transfer_rate(session,intervalo = 2)
-        trafego = random.random() 
+        trafego = self.transfer_rate(session,intervalo = 2)
+        #trafego = random.random() 
         self.window['-TRAFFIC-'].update(trafego)
         
         self.verifica_erros(variavel = 'INERRORS',valor = ifInErrors ,limite = 1)
@@ -244,20 +248,28 @@ class App:
         return total_memory,used_memory,used_memory_percent,free_memory
     
     def disk_space(self,session):
-        disk_space_oid = 'hrStorageUsed.31'
-        disk_space_used = int(session.get(disk_space_oid).value)
+        try:
+            #disk_space_oid = 'hrStorageUsed.31'
+            #disk_space_oid = '1.3.6.1.4.1.2021.9.1.7.1'
+            disk_space_oid = 'UCD-SNMP-MIB::dskAvail.1'
+            disk_space_used = int(session.get(disk_space_oid).value)
 
-        if disk_space_used > 0:
-            disk_space_total_oid = 'hrStorageSize.31'
-            disk_space_total = int(session.get(disk_space_total_oid).value)
-            disk_space_free = disk_space_total - disk_space_used
-            disk_space_used_percent = (disk_space_used / disk_space_total) * 100
-            print(f'Total disk space: {disk_space_total} bytes')
-            print(f'Used disk space: {disk_space_used} bytes ({disk_space_used_percent:.2f}%)')
-            print(f'Free disk space: {disk_space_free} bytes')
-            return disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free
-        else:
-            sg.popup("Não foi possível obter o espaço em disco")
+            if disk_space_used > 0:
+                #disk_space_total_oid = 'hrStorageSize.31'
+                disk_space_total_oid = 'UCD-SNMP-MIB::dskAvail.1'
+                disk_space_total = int(session.get(disk_space_total_oid).value)
+                disk_space_free = disk_space_total - disk_space_used
+                disk_space_used_percent = (disk_space_used / disk_space_total) * 100
+                print(f'Total disk space: {disk_space_total} bytes')
+                print(f'Used disk space: {disk_space_used} bytes ({disk_space_used_percent:.2f}%)')
+                print(f'Free disk space: {disk_space_free} bytes')
+                return disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free
+            else:
+                sg.popup("Não foi possível obter o espaço em disco")
+        except ValueError:
+            return ["Nao foi possivel ler o disco", "Nao foi possivel ler o disco", "Nao foi possivel ler o disco", "Nao foi possivel ler o disco"]
+
+
     def transfer_rate(self,session,intervalo):
         import time
         initial_time = time.time()
@@ -279,14 +291,21 @@ class App:
     
     
     def temperature(self,session):
-        temperature_oid = 'tempSensorValue.1'
-        temperature_value = int(session.get(temperature_oid).value)
+        #temperature_oid = 'tempSensorValue.1'
+        #temperature_oid = '1.3.6.1.4.1.318.1.1.10.2.3.2.1.4'
+        temperature_oid = '1.3.6.1.4.1.9148.3.3.1.3.1.1'
 
-        if temperature_value > 0:
-            temperature_celsius = temperature_value / 10
-            return temperature_celsius
-        else:
-            sg.popup("Não foi possível obter a temperatura")
+        try:
+            temperature_value = int(session.get(temperature_oid).value)
+
+            if temperature_value > 0:
+                temperature_celsius = temperature_value / 10
+                return temperature_celsius
+            else:
+                sg.popup("Não foi possível obter a temperatura")
+    
+        except ValueError:
+            return "Conecte um Sensor de Temperatura"   
             
             
     def packets(self,session):
@@ -311,7 +330,7 @@ class App:
             
     def verifica_erros(self,variavel,valor,limite):
         
-        if valor > limite:
+        if float(valor) > float(limite):
             message = "A variável " + variavel + " está acima do limite de " + str(limite) + " % \n\n ==== Acabar com a conexão? ==== "
             button = sg.popup(message, button_type=sg.POPUP_BUTTONS_YES_NO)
 
