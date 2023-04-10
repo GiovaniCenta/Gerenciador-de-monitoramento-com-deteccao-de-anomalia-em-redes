@@ -2,14 +2,64 @@ import PySimpleGUI as sg
 from easysnmp import Session
 import random
 from time import time
+from datetime import datetime
 
+from sklearn.ensemble import IsolationForest
+from sklearn.neighbors import LocalOutlierFactor
+from sklearn.svm import OneClassSVM
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+import numpy as np
+
+from ml import ML
 sg.theme('DarkTeal')
-
+MIN_DATA_POINTS = 50
 
 class App:
 
     def __init__(self):
         self.window = self.create_screen()
+
+
+        #esciolher entre algum desses 4 algoritmos
+        model_type = 'isolation_forest'
+        if model_type == 'isolation_forest':
+            model = IsolationForest(contamination='auto', random_state=42)
+        elif model_type == 'local_outlier_factor':
+            model = LocalOutlierFactor(n_neighbors=20, contamination='auto', novelty=True)
+        elif model_type == 'one_class_svm':
+            model = OneClassSVM(kernel='rbf', nu=0.05)
+        elif model_type == 'dbscan':
+            model = DBSCAN(eps=0.5, min_samples=5)
+        
+        self.ml = ML(model = model)
+        self.anomaly_data = []
+        self.anomaly_model = None
+        self.timestamps = []
+        self.predictions = []
+        self.feature_names = ["uptime_secs",
+                            "cpu_usage_percent",
+                            "number_of_interfaces",
+                            "total_memory",
+                            "used_memory",
+                            "used_memory_percent",
+                            "free_memory",
+                            "disk_space_total",
+                            "disk_space_used",
+                            "disk_space_used_percent",
+                            "disk_space_free",
+                            "ifInErrors",
+                            "ifOutErrors",
+                            "temperature",
+                            "active_tcp_connections",
+                            "input_traffic",
+                            "output_traffic",
+                            "total_traffic",
+                            "utilizacao_bps",
+                            "trafego",
+                        ]
+
+        
  
     def create_screen(self):
         window = sg.Window('Análise de Métricas', self.get_layout(), default_element_size=(40, 1), auto_size_text=True,
@@ -111,7 +161,6 @@ class App:
             #self.update(endereco_ip)
 
     def update(self,endereco_ip):
-        
         session = Session(hostname=endereco_ip, community='public', version=2)
 
         uptime = session.get('sysUpTime.0')
@@ -129,9 +178,9 @@ class App:
         
         #numero de interfaces
         oid = '1.3.6.1.2.1.2.1.0'
-        value = int(session.get(oid).value)
+        number_of_interfaces = int(session.get(oid).number_of_interfaces)
         #value = random.random()
-        self.window['-INTERFACES-'].update(value)
+        self.window['-INTERFACES-'].update(number_of_interfaces)
         
         
         #total_memory,used_memory,used_memory_percent,free_memory = self.memory(session)
@@ -195,7 +244,42 @@ class App:
         trafego = self.transfer_rate(session,intervalo = 2)
         #trafego = random.random() 
         self.window['-TRAFFIC-'].update(trafego)
+
+
+        #parte de machine learning
+        self.anomaly_data.append([uptime_secs,cpu_usage_percent,number_of_interfaces,total_memory,used_memory,used_memory_percent,free_memory,disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free,ifInErrors,ifOutErrors,temperature,active_tcp_connections,input_traffic,output_traffic,total_traffic,utilizacao_bps,trafego])
         
+
+        #treinar o modelo se tem o número mínimo de pontos
+        if len(self.anomaly_data) >= MIN_DATA_POINTS:
+            anomaly_data_np = np.array(self.anomaly_data)
+            self.anomaly_model = self.ml.train_anomaly_detector(anomaly_data_np)
+
+        if self.anomaly_model is not None:
+            prediction = self.anomaly_model.predict([uptime_secs,cpu_usage_percent,number_of_interfaces,total_memory,used_memory,used_memory_percent,free_memory,disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free,ifInErrors,ifOutErrors,temperature,active_tcp_connections,input_traffic,output_traffic,total_traffic,utilizacao_bps,trafego])
+            self.predictions.append(prediction)
+            #pegar o timestamp atual
+            current_timestamp = datetime.now()
+            self.timestamps.append(current_timestamp)
+
+            print(prediction)
+            if prediction[0] == -1:
+                print("Anomalia detectada!")
+                sg.popup('Anomalia detectada!')
+
+            #verificar a importância de cada atributo
+            self.ml.feature_importance(self.feature_names)
+
+            #gráfico de anomalias x tempo
+            self.ml.anomaly_per_time(self.timestamps,self.predictions)
+
+
+
+        #plotar o gráfico em tempo real
+        self.ml.update_realtime_chart(self.anomaly_data)
+
+
+
         self.verifica_erros(variavel = 'INERRORS',valor = ifInErrors ,limite = 1)
         self.verifica_erros(variavel = 'OUTERRORS',valor = ifOutErrors ,limite = 1)
         self.verifica_erros(variavel = 'Utilização da bandwidth',valor = utilizacao_bps ,limite = 95)
@@ -328,14 +412,3 @@ class App:
 
         return input_traffic,output_traffic,total_traffic
             
-    def verifica_erros(self,variavel,valor,limite):
-        
-        if float(valor) > float(limite):
-            message = "A variável " + variavel + " está acima do limite de " + str(limite) + " % \n\n ==== Acabar com a conexão? ==== "
-            button = sg.popup(message, button_type=sg.POPUP_BUTTONS_YES_NO)
-
-            if button == "Yes":
-                self.window.close()
-                exit(8)
-            else:
-                pass

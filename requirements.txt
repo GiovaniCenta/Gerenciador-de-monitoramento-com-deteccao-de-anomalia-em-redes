@@ -1,3 +1,4 @@
 easysnmp
 PySimpleGUI
 Tkinter
+scikit-learn
