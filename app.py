@@ -13,7 +13,8 @@ import numpy as np
 
 from ml import ML
 sg.theme('DarkTeal')
-MIN_DATA_POINTS = 50
+#MIN_DATA_POINTS = 50
+MIN_DATA_POINTS = 10
 
 class App:
 
@@ -21,7 +22,7 @@ class App:
         self.window = self.create_screen()
 
 
-        #esciolher entre algum desses 4 algoritmos
+        #escolher entre algum desses 4 algoritmos
         model_type = 'isolation_forest'
         if model_type == 'isolation_forest':
             model = IsolationForest(contamination='auto', random_state=42)
@@ -37,20 +38,14 @@ class App:
         self.anomaly_model = None
         self.timestamps = []
         self.predictions = []
-        self.feature_names = ["uptime_secs",
-                            "cpu_usage_percent",
+        self.feature_names = ["cpu_usage_percent",
                             "number_of_interfaces",
                             "total_memory",
                             "used_memory",
                             "used_memory_percent",
                             "free_memory",
-                            "disk_space_total",
-                            "disk_space_used",
-                            "disk_space_used_percent",
-                            "disk_space_free",
                             "ifInErrors",
                             "ifOutErrors",
-                            "temperature",
                             "active_tcp_connections",
                             "input_traffic",
                             "output_traffic",
@@ -145,7 +140,7 @@ class App:
         while True:
             event, values = self.window.read(timeout=0)
             endereco_ip = ip
-            print(f'Endereço IP digitado: {endereco_ip}')
+            #print(f'Endereço IP digitado: {endereco_ip}')
             
             self.update(endereco_ip)
             import time
@@ -178,7 +173,7 @@ class App:
         
         #numero de interfaces
         oid = '1.3.6.1.2.1.2.1.0'
-        number_of_interfaces = int(session.get(oid).number_of_interfaces)
+        number_of_interfaces = int(session.get(oid).value)
         #value = random.random()
         self.window['-INTERFACES-'].update(number_of_interfaces)
         
@@ -234,9 +229,6 @@ class App:
         self.window['-OUTTRAFFIC-'].update(output_traffic)
         self.window['-TOTALTRAFFIC-'].update(total_traffic)
         
-        
-        
-        
         utilizacao_bps= self.utilizacao_largura_banda(session,intervalo = 2)
         #utilizacao_bps = random.random() 
         self.window['-BANDWIDTH-'].update(utilizacao_bps)
@@ -245,45 +237,50 @@ class App:
         #trafego = random.random() 
         self.window['-TRAFFIC-'].update(trafego)
 
-
         #parte de machine learning
-        self.anomaly_data.append([uptime_secs,cpu_usage_percent,number_of_interfaces,total_memory,used_memory,used_memory_percent,free_memory,disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free,ifInErrors,ifOutErrors,temperature,active_tcp_connections,input_traffic,output_traffic,total_traffic,utilizacao_bps,trafego])
-        
+        variables = [cpu_usage_percent,number_of_interfaces,total_memory,used_memory,used_memory_percent,free_memory,ifInErrors,ifOutErrors,active_tcp_connections,input_traffic,output_traffic,total_traffic,utilizacao_bps,trafego]
+        #variables = [cpu_usage_percent,used_memory_percent,ifInErrors,ifOutErrors,utilizacao_bps,trafego]
+        variables = [float(i) for i in variables]
+        self.anomaly_data.append(variables)        
 
         #treinar o modelo se tem o número mínimo de pontos
+        prediction = 0
         if len(self.anomaly_data) >= MIN_DATA_POINTS:
             anomaly_data_np = np.array(self.anomaly_data)
             self.anomaly_model = self.ml.train_anomaly_detector(anomaly_data_np)
 
         if self.anomaly_model is not None:
-            prediction = self.anomaly_model.predict([uptime_secs,cpu_usage_percent,number_of_interfaces,total_memory,used_memory,used_memory_percent,free_memory,disk_space_total,disk_space_used,disk_space_used_percent,disk_space_free,ifInErrors,ifOutErrors,temperature,active_tcp_connections,input_traffic,output_traffic,total_traffic,utilizacao_bps,trafego])
+
+            variables = np.array(variables)
+            variables_reshaped = variables.reshape(1,-1)
+            prediction = self.anomaly_model.predict(variables_reshaped)
             self.predictions.append(prediction)
             #pegar o timestamp atual
             current_timestamp = datetime.now()
             self.timestamps.append(current_timestamp)
-
+            
             print(prediction)
             if prediction[0] == -1:
                 print("Anomalia detectada!")
-                sg.popup('Anomalia detectada!')
+                #sg.popup('Anomalia detectada!')
 
             #verificar a importância de cada atributo
-            self.ml.feature_importance(self.feature_names)
-
-            #gráfico de anomalias x tempo
-            self.ml.anomaly_per_time(self.timestamps,self.predictions)
-
-
+            self.ml.feature_importance(self.feature_names, self.anomaly_model, variables_reshaped)
+            #self.ml.print_tree(self.anomaly_data,self.anomaly_model, self.feature_names)
+        else:
+            self.predictions.append(prediction)
+       
 
         #plotar o gráfico em tempo real
         self.ml.update_realtime_chart(self.anomaly_data)
 
+        #gráfico de anomalias x tempo
+        self.ml.anomaly_per_time(self.timestamps,self.predictions)
 
-
-        self.verifica_erros(variavel = 'INERRORS',valor = ifInErrors ,limite = 1)
-        self.verifica_erros(variavel = 'OUTERRORS',valor = ifOutErrors ,limite = 1)
-        self.verifica_erros(variavel = 'Utilização da bandwidth',valor = utilizacao_bps ,limite = 95)
-        self.verifica_erros(variavel = 'Uso de memoria',valor = used_memory_percent ,limite = 95)
+        #self.verifica_erros(variavel = 'INERRORS',valor = ifInErrors ,limite = 1)
+        #self.verifica_erros(variavel = 'OUTERRORS',valor = ifOutErrors ,limite = 1)
+        #self.verifica_erros(variavel = 'Utilização da bandwidth',valor = utilizacao_bps ,limite = 95)
+        #self.verifica_erros(variavel = 'Uso de memoria',valor = used_memory_percent ,limite = 95)
         
         
 
@@ -325,9 +322,9 @@ class App:
         free_memory = total_memory - used_memory
         used_memory_percent = (used_memory / total_memory) * 100
 
-        print(f'Total memory: {total_memory} bytes')
-        print(f'Used memory: {used_memory} bytes ({used_memory_percent}%)')
-        print(f'Free memory: {free_memory} bytes')
+        #print(f'Total memory: {total_memory} bytes')
+        #print(f'Used memory: {used_memory} bytes ({used_memory_percent}%)')
+        #print(f'Free memory: {free_memory} bytes')
         
         return total_memory,used_memory,used_memory_percent,free_memory
     
